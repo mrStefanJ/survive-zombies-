@@ -28,7 +28,7 @@ class Controls:
         pass
 
     def draw(self, screen):
-        screen.fill((10, 10, 10))
+        screen.fill((30,30,30))
 
         # TITLE
         title = self.title_font.render("CONTROLS", True, (255, 255, 0))

@@ -41,7 +41,7 @@ class Menu:
             self.game.change_state(GameState.HIGHSCORE)
 
         elif option == "Controls":
-            self.game.change_state((GameState.CONTROLS))
+            self.game.change_state(GameState.CONTROLS)
 
         elif option == "Settings":
             self.game.change_state(GameState.SETTINGS)
@@ -49,6 +49,9 @@ class Menu:
         elif option == "Exit":
             pygame.quit()
             exit()
+
+    def enter(self):
+        self.selected = 0
 
     def update(self):
         self.time += 0.05  # brzina animacije

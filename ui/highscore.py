@@ -18,58 +18,65 @@ class Highscore:
         self.key_pressed = True
 
     def handle_event(self, event):
-        pass
+        if event.type != pygame.KEYDOWN:
+            return
+
+        if event.key == pygame.K_UP:
+            self.selected = (self.selected - 1) % len(self.options)
+
+        elif event.key == pygame.K_DOWN:
+            self.selected = (self.selected + 1) % len(self.options)
+
+        elif event.key == pygame.K_RETURN:
+            self.select_option()
 
     def select_option(self):
         if self.options[self.selected] == "Back":
             self.game.change_state(GameState.MENU)  # koristi fade
 
     def update(self):
-        keys = pygame.key.get_pressed()
-
-        if keys[pygame.K_UP] and not self.key_pressed:
-            self.selected = (self.selected - 1) % len(self.options)
-            self.key_pressed = True
-
-        elif keys[pygame.K_DOWN] and not self.key_pressed:
-            self.selected = (self.selected + 1) % len(self.options)
-            self.key_pressed = True
-
-        elif keys[pygame.K_RETURN] and not self.key_pressed:
-            self.select_option()
-            self.key_pressed = True
-
-        if not any(keys):
-            self.key_pressed = False
+       pass
 
     def draw(self, screen):
-        screen.fill((50, 0, 0))
+        screen.fill((30, 30, 30))
 
-        title = self.font.render("HIGHSCORES", True, (255, 255, 0))
+        # =========================
+        # TITLE
+        # =========================
+        title = self.font.render("HIGHSCORE", True, (255, 255, 0))
         screen.blit(title, (100, 50))
 
-        leaderboard = self.game.data.get("leaderboard", [])
-
-        if not leaderboard:
-            no_data = self.small_font.render("No scores yet", True, (200, 200, 200))
-            screen.blit(no_data, (100, 150))
-        else:
-            for i, entry in enumerate(leaderboard):
-                name = entry["name"]
-                score = entry["score"]
-
-                text = self.font.render(
-                    f"{i + 1}. {name} - {score}",
-                    True,
-                    (255, 255, 255)
-                )
-                screen.blit(text, (100, 150 + i * 50))
-
-        # BACK dugme
+        # =========================
+        # OPTIONS
+        # =========================
         for i, option in enumerate(self.options):
             color = (255, 255, 255)
             if i == self.selected:
                 color = (255, 200, 0)
 
-            text = self.font.render(option, True, color)
-            screen.blit(text, (100, 400 + i * 60))
+            text = option
+
+            # dodatni info po opciji
+            if option == "Toggle Sound":
+                state = "ON" if self.game.data.get("sound", True) else "OFF"
+                text = f"{option}: {state}"
+
+
+                if self.skins:
+                    current = self.skins[self.skin_index]
+                    text = f"{option}: {current}"
+                else:
+                    text = f"{option}: None"
+
+            rendered = self.font.render(text, True, color)
+            screen.blit(rendered, (100, 150 + i * 60))
+
+        # =========================
+        # INFO
+        # =========================
+        coins = self.small_font.render(
+            f"Coins: {self.game.data.get('coins', 0)}",
+            True,
+            (200, 200, 200)
+        )
+        screen.blit(coins, (100, 350))
