@@ -4,15 +4,19 @@ FILE = "data/save.json"
 
 def load_data():
     try:
-        with open(FILE, "r") as f:
-            return json.load(f)
+        with open("save.json", "r") as f:
+            data = json.load(f)
     except:
-        return {
-            "highscore": 0,
-            "coins": 0,
-            "unlocked_skins": ["default"],
-            "selected_skin": "default"
-        }
+        data = {}
+
+    # DEFAULTS
+    data.setdefault("coins", 0)
+    data.setdefault("owned_skins", ["Green Skin"])
+    data.setdefault("selected_skin", "Green Skin")
+    data.setdefault("leaderboard", [])
+    data.setdefault("highscore", 0)
+
+    return data
 
 def save_data(data):
     with open(FILE, "w") as f:

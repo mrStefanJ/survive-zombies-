@@ -1,8 +1,8 @@
 # =========================
 # FILE: data/settings.py
 # =========================
-WIDTH = 800
-HEIGHT = 600
+WIDTH = 900
+HEIGHT = 700
 
 # SOUND
 SOUND_ENABLED = True
