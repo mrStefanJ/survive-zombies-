@@ -4,9 +4,6 @@
 import pygame
 import random
 
-import pygame
-import random
-
 class Zombie:
     def __init__(self, zombie_type="normal"):
         self.type = zombie_type

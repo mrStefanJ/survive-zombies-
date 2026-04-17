@@ -1,8 +1,8 @@
 import pygame
 
 class Player:
-    def __init__(self, skin="default"):
-        self.skin = skin
+    def __init__(self, game):
+        self.game = game
         self.rect = pygame.Rect(400, 300, 40, 40)
         self.speed = 200
 
@@ -19,12 +19,16 @@ class Player:
             self.rect.x += self.speed * dt
 
     def draw(self, screen):
+        skin = self.game.data.get("selected_skin", "Green Skin")
+
         color = (0, 255, 0)
 
-        if self.skin == "blue":
+        if skin == "Red Skin":
+            color = (255, 0, 0)
+        elif skin == "Blue Skin":
             color = (0, 0, 255)
-        elif self.skin == "gold":
-            color = (255, 215, 0)
+        elif skin == "Green Skin":
+            color = (0, 255, 0)
 
         pygame.draw.rect(screen, color, self.rect)
 
