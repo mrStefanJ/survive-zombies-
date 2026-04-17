@@ -10,3 +10,4 @@ class GameState:
     SHOP = 4
     HIGHSCORE = 5
     CONTROLS = 6
+    PAUSED = 7

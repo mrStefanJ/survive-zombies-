@@ -11,6 +11,7 @@ from ui.shop import Shop
 from ui.settings import Settings
 from ui.highscore import Highscore
 from ui.controls import Controls
+from ui.pause import Pause
 from systems.player_system import Player
 from systems.zombie_system import ZombieManager
 from systems.spawn_system import SpawnSystem
@@ -26,7 +27,18 @@ class Game:
 
         self.data = load_data()
 
+        self.pause_selected = 0
+        self.pause_options = ["Resume", "Exit"]
+
         self.state = GameState.MENU
+        self.pause_selected = 0
+        self.pause_options = ["Resume", "Exit"]
+
+        if "owned_skins" not in self.data:
+            self.data["owned_skins"] = ["Green Skin"]
+
+        if "selected_skin" not in self.data:
+            self.data["selected_skin"] = "Green Skin"
 
         # gameplay
         self.bombs = []
@@ -46,6 +58,10 @@ class Game:
         self.bomb_cooldown = 2.0  # sekunde za regeneraciju 1 bombe
         self.bomb_timer = 0
 
+        self.death_slow = False
+        self.death_timer = 0
+        self.death_duration = 0.6  # trajanje slow-motion
+
         # sound (safe load)
         try:
             pygame.mixer.init()
@@ -61,11 +77,12 @@ class Game:
         self.game_over = GameOver(self)
         self.controls = Controls(self)
         self.hud = HUD()
+        self.pause = Pause(self)
 
         self.reset()
 
     def reset(self):
-        self.player = Player()
+        self.player = Player(self)
         self.zombies = ZombieManager()
         self.spawner = SpawnSystem(self.zombies)
 
@@ -75,6 +92,16 @@ class Game:
         self.explosions.clear()
         self.particles.clear()
 
+        self.death_slow = False
+        self.death_timer = 0
+
+    def toggle_pause(self):
+        if self.state == GameState.PLAYING:
+            self.pause_selected = 0
+            self.change_state(GameState.PAUSED)
+
+        elif self.state == GameState.PAUSED:
+            self.change_state(GameState.PLAYING)
     # =========================
     # MAIN LOOP
     # =========================
@@ -85,8 +112,18 @@ class Game:
 
             # INPUT
             for event in pygame.event.get():
+
                 if event.type == pygame.QUIT:
                     running = False
+
+                # ESC → pause
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    if self.state == GameState.PLAYING:
+                        self.toggle_pause()
+                        continue
+                    elif self.state == GameState.PAUSED:
+                        self.toggle_pause()
+                        continue
 
                 if self.state == GameState.MENU:
                     self.menu.handle_event(event)
@@ -100,6 +137,8 @@ class Game:
                     self.controls.handle_event(event)
                 elif self.state == GameState.GAME_OVER:
                     self.game_over.handle_event(event)
+                elif self.state == GameState.PAUSED:
+                    self.handle_pause_event(event)
 
                 # 🔥 SPACE bomb (single press)
                 if event.type == pygame.KEYDOWN:
@@ -113,7 +152,7 @@ class Game:
                 self.menu.draw(self.screen)
 
             elif self.state == GameState.SHOP:
-                self.shop.update()
+                self.shop.update(dt)
                 self.shop.draw(self.screen)
 
             elif self.state == GameState.SETTINGS:
@@ -132,17 +171,60 @@ class Game:
                 self.controls.update()
                 self.controls.draw(self.screen)
 
+            elif self.state == GameState.PAUSED:
+                self.draw_game()  # background freeze
+                self.pause.draw()
+
+
             elif self.state == GameState.GAME_OVER:
                 self.game_over.update()
                 self.game_over.draw(self.screen)
 
             pygame.display.flip()
 
+    def finish_game_over(self):
+        if "leaderboard" not in self.data:
+            self.data["leaderboard"] = []
+
+        self.data["leaderboard"].append({
+            "name": "YOU",
+            "score": self.score
+        })
+
+        self.data["leaderboard"] = sorted(
+            self.data["leaderboard"],
+            key=lambda x: x["score"],
+            reverse=True
+        )[:5]
+
+        if self.score > self.data.get("highscore", 0):
+            self.data["highscore"] = self.score
+
+        self.data["coins"] += self.score
+
+        save_data(self.data)
+
+        self.change_state(GameState.GAME_OVER)
     # =========================
     # GAME UPDATE
     # =========================
     def update_game(self, dt):
         self.time_survived += dt
+
+        # =========================
+        # SLOW MOTION DEATH
+        # =========================
+        if self.death_slow:
+            self.death_timer -= dt
+
+            slow_factor = 0.15  # koliko usporava (0.1 = ultra slow)
+            dt *= slow_factor
+
+            if self.death_timer <= 0:
+                self.death_slow = False
+
+                # 🔥 tek sada ide game over
+                self.finish_game_over()
 
         # recharge bombi
         if self.current_bombs < self.max_bombs:
@@ -161,7 +243,7 @@ class Game:
         self.update_particles(dt)
         self.update_shake(dt)
 
-        if self.zombies.check_collision(self.player):
+        if not self.death_slow and self.zombies.check_collision(self.player):
             self.handle_game_over()
 
     # =========================
@@ -329,6 +411,18 @@ class Game:
 
             self.screen.blit(surf, (0, 0))
 
+        # =========================
+        # DEATH OVERLAY
+        # =========================
+        if self.death_slow:
+            alpha = int(150 * (1 - self.death_timer / self.death_duration))
+
+            overlay = pygame.Surface((WIDTH, HEIGHT))
+            overlay.set_alpha(alpha)
+            overlay.fill((150, 0, 0))  # crveni tint
+
+            self.screen.blit(overlay, (0, 0))
+
         # HUD
         self.hud.draw(self.screen, self.time_survived, self.score)
 
@@ -338,10 +432,48 @@ class Game:
     def change_state(self, new_state):
         self.state = new_state
 
+        # 🔥 TRIGGER ENTER
+        if new_state == GameState.GAME_OVER:
+            self.game_over.enter()
+        elif new_state == GameState.HIGHSCORE:
+            self.highscore.enter()
+
+        elif new_state == GameState.SETTINGS:
+            self.settings.enter()
+
+        elif new_state == GameState.MENU:
+            self.menu.enter()
+
+    def handle_pause_event(self, event):
+        if event.type != pygame.KEYDOWN:
+            return
+
+        if event.key == pygame.K_UP:
+            self.pause_selected = (self.pause_selected - 1) % len(self.pause_options)
+
+        elif event.key == pygame.K_DOWN:
+            self.pause_selected = (self.pause_selected + 1) % len(self.pause_options)
+
+        elif event.key == pygame.K_RETURN:
+            option = self.pause_options[self.pause_selected]
+
+            if option == "Resume":
+                self.change_state(GameState.PLAYING)
+
+            elif option == "Exit":
+                self.change_state(GameState.MENU)
+                self.reset()
+
     # =========================
     # GAME OVER
     # =========================
     def handle_game_over(self):
+        if self.death_slow:
+            return
+
+        self.death_slow = True
+        self.death_timer = self.death_duration
+
         if "leaderboard" not in self.data:
             self.data["leaderboard"] = []
 
@@ -356,6 +488,9 @@ class Game:
             reverse=True
         )[:5]
 
-        save_data(self.data)
+        if self.score > self.data.get("highscore", 0):
+            self.data["highscore"] = self.score
 
-        self.change_state(GameState.GAME_OVER)
+        self.data["coins"] += self.score
+
+        save_data(self.data)
