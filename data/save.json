@@ -1,34 +1,10 @@
 {
-    "highscore": 0,
-    "coins": 2,
-    "unlocked_skins": [
-        "default"
-    ],
-    "selected_skin": "Red Skin",
-    "sound": true,
+    "coins": 0,
     "owned_skins": [
-        "Red Skin"
+        "Green Skin"
     ],
-    "leaderboard": [
-        {
-            "name": "YOU",
-            "score": 16
-        },
-        {
-            "name": "YOU",
-            "score": 15
-        },
-        {
-            "name": "YOU",
-            "score": 9
-        },
-        {
-            "name": "YOU",
-            "score": 7
-        },
-        {
-            "name": "YOU",
-            "score": 5
-        }
-    ]
+    "selected_skin": "Green Skin",
+    "leaderboard": [],
+    "highscore": 0,
+    "sound": true
 }

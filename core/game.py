@@ -4,6 +4,7 @@
 import pygame
 import random
 from core.game_state import GameState
+from systems.bomb_system import BombSystem
 from ui.menu import Menu
 from ui.game_over import GameOver
 from ui.hud import HUD
@@ -31,8 +32,6 @@ class Game:
         self.pause_options = ["Resume", "Exit"]
 
         self.state = GameState.MENU
-        self.pause_selected = 0
-        self.pause_options = ["Resume", "Exit"]
 
         if "owned_skins" not in self.data:
             self.data["owned_skins"] = ["Green Skin"]
@@ -41,9 +40,10 @@ class Game:
             self.data["selected_skin"] = "Green Skin"
 
         # gameplay
-        self.bombs = []
-        self.explosion_time = 3
         self.score = 0
+
+        # bomb system
+        self.bomb_system = BombSystem(self)
 
         # effects
         self.explosions = []
@@ -52,21 +52,27 @@ class Game:
         # screen shake
         self.shake_duration = 0
         self.shake_intensity = 0
-        self.max_bombs = 5
-        self.current_bombs = 5
-
-        self.bomb_cooldown = 2.0  # sekunde za regeneraciju 1 bombe
-        self.bomb_timer = 0
 
         self.death_slow = False
         self.death_timer = 0
         self.death_duration = 0.6  # trajanje slow-motion
 
+        self.bomb_font = pygame.font.SysFont("Arial", 30, bold=True)
+
         # sound (safe load)
         try:
-            pygame.mixer.init()
+            pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
+            pygame.mixer.set_num_channels(16)
+
             self.explosion_sound = pygame.mixer.Sound("assets/sounds/explosion.wav")
-        except:
+            self.explosion_sound.set_volume(0.7)
+
+            pygame.mixer.music.load("assets/background/zombie-hot-dogs-2-back-from-the-bread.wav")
+            pygame.mixer.music.set_volume(0.5)
+            pygame.mixer.music.play(-1)
+
+        except Exception as e:
+            print("Sound error:", e)
             self.explosion_sound = None
 
         # UI
@@ -88,7 +94,9 @@ class Game:
 
         self.time_survived = 0
         self.score = 0
-        self.bombs.clear()
+
+        self.bomb_system.reset()
+
         self.explosions.clear()
         self.particles.clear()
 
@@ -144,7 +152,9 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if self.state == GameState.PLAYING:
                         if event.key == pygame.K_SPACE:
-                            self.throw_bomb()
+                            self.bomb_system.throw(
+                                (self.player.rect.centerx, self.player.rect.centery)
+                            )
 
             # UPDATE + DRAW
             if self.state == GameState.MENU:
@@ -200,6 +210,9 @@ class Game:
         if self.score > self.data.get("highscore", 0):
             self.data["highscore"] = self.score
 
+        if "coins" not in self.data:
+            self.data["coins"] = 0
+
         self.data["coins"] += self.score
 
         save_data(self.data)
@@ -226,19 +239,10 @@ class Game:
                 # 🔥 tek sada ide game over
                 self.finish_game_over()
 
-        # recharge bombi
-        if self.current_bombs < self.max_bombs:
-            self.bomb_timer += dt
-
-            if self.bomb_timer >= self.bomb_cooldown:
-                self.current_bombs += 1
-                self.bomb_timer = 0
-
         self.player.update(dt)
         self.spawner.update(self.time_survived)
         self.zombies.update(self.player)
-
-        self.update_bombs(dt)
+        self.bomb_system.update(dt)
         self.update_explosions(dt)
         self.update_particles(dt)
         self.update_shake(dt)
@@ -309,6 +313,15 @@ class Game:
 
         # sound
         if self.explosion_sound:
+            px, py = self.player.rect.center
+            ex, ey = pos
+
+            distance = ((px - ex) ** 2 + (py - ey) ** 2) ** 0.5
+            max_distance = 500
+
+            volume = max(0.0, min(1.0, 1 - distance / max_distance))
+
+            self.explosion_sound.set_volume(volume)
             self.explosion_sound.play()
 
     def update_explosions(self, dt):
@@ -350,13 +363,7 @@ class Game:
         self.zombies.draw(self.screen)
 
         # bombs
-        for bomb in self.bombs:
-            pygame.draw.circle(
-                self.screen,
-                (255, 100, 0),
-                (int(bomb["pos"][0]), int(bomb["pos"][1])),
-                15
-            )
+        self.bomb_system.draw(self.screen)
 
         # particles
         for p in self.particles:
@@ -370,12 +377,12 @@ class Game:
         # =========================
         # BOMB UI
         # =========================
-        for i in range(self.max_bombs):
+        for i in range(self.bomb_system.max_bombs):
+
             x = 20 + i * 40
             y = HEIGHT - 50
 
-            # puna bomba
-            if i < self.current_bombs:
+            if i < self.bomb_system.current_bombs:
                 color = (255, 140, 0)
             else:
                 color = (80, 80, 80)
@@ -383,8 +390,8 @@ class Game:
             pygame.draw.circle(self.screen, color, (x, y), 12)
 
         # cooldown bar
-        if self.current_bombs < self.max_bombs:
-            progress = self.bomb_timer / self.bomb_cooldown
+        if self.bomb_system.current_bombs < self.bomb_system.max_bombs:
+            progress = self.bomb_system.bomb_timer / self.bomb_system.bomb_cooldown
 
             bar_width = 100
             pygame.draw.rect(self.screen, (100, 100, 100), (20, HEIGHT - 25, bar_width, 8))
@@ -441,6 +448,9 @@ class Game:
         elif new_state == GameState.SETTINGS:
             self.settings.enter()
 
+        elif new_state == GameState.CONTROLS:
+            self.controls.enter()
+
         elif new_state == GameState.MENU:
             self.menu.enter()
 
@@ -474,23 +484,5 @@ class Game:
         self.death_slow = True
         self.death_timer = self.death_duration
 
-        if "leaderboard" not in self.data:
-            self.data["leaderboard"] = []
-
-        self.data["leaderboard"].append({
-            "name": "YOU",
-            "score": self.score
-        })
-
-        self.data["leaderboard"] = sorted(
-            self.data["leaderboard"],
-            key=lambda x: x["score"],
-            reverse=True
-        )[:5]
-
         if self.score > self.data.get("highscore", 0):
             self.data["highscore"] = self.score
-
-        self.data["coins"] += self.score
-
-        save_data(self.data)

@@ -1,82 +1,90 @@
-# =========================
-# FILE: ui/highscore.py
-# =========================
 import pygame
 from core.game_state import GameState
+from ui.helper import UIHelper
+
 
 class Highscore:
     def __init__(self, game):
         self.game = game
-        self.font = pygame.font.SysFont("Arial", 40)
+
+        self.title_font = pygame.font.SysFont("Arial", 60, bold=True)
+        self.font = pygame.font.SysFont("Arial", 35)
         self.small_font = pygame.font.SysFont("Arial", 25)
-        self.key_pressed = False
 
         self.options = ["Back"]
         self.selected = 0
+        self.key_pressed = False
+
+        self.time = 0
 
     def enter(self):
         self.key_pressed = True
 
     def handle_event(self, event):
-        if event.type != pygame.KEYDOWN:
-            return
-
-        if event.key == pygame.K_UP:
-            self.selected = (self.selected - 1) % len(self.options)
-
-        elif event.key == pygame.K_DOWN:
-            self.selected = (self.selected + 1) % len(self.options)
-
-        elif event.key == pygame.K_RETURN:
-            self.select_option()
-
-    def select_option(self):
-        if self.options[self.selected] == "Back":
-            self.game.change_state(GameState.MENU)  # koristi fade
+        pass
 
     def update(self):
-       pass
+        self.time += 0.05
+        keys = pygame.key.get_pressed()
+
+        if keys[pygame.K_RETURN] and not self.key_pressed:
+            self.game.change_state(GameState.MENU)
+            self.key_pressed = True
+
+        if not any(keys):
+            self.key_pressed = False
 
     def draw(self, screen):
-        screen.fill((30, 30, 30))
+        screen.fill((18, 18, 22))
+        w, h = screen.get_size()
 
         # =========================
-        # TITLE
+        # TITLE (ANIMATED)
         # =========================
-        title = self.font.render("HIGHSCORE", True, (255, 255, 0))
-        screen.blit(title, (100, 50))
-
-        # =========================
-        # OPTIONS
-        # =========================
-        for i, option in enumerate(self.options):
-            color = (255, 255, 255)
-            if i == self.selected:
-                color = (255, 200, 0)
-
-            text = option
-
-            # dodatni info po opciji
-            if option == "Toggle Sound":
-                state = "ON" if self.game.data.get("sound", True) else "OFF"
-                text = f"{option}: {state}"
-
-
-                if self.skins:
-                    current = self.skins[self.skin_index]
-                    text = f"{option}: {current}"
-                else:
-                    text = f"{option}: None"
-
-            rendered = self.font.render(text, True, color)
-            screen.blit(rendered, (100, 150 + i * 60))
-
-        # =========================
-        # INFO
-        # =========================
-        coins = self.small_font.render(
-            f"Coins: {self.game.data.get('coins', 0)}",
-            True,
-            (200, 200, 200)
+        UIHelper.draw_title(
+            screen,
+            "HIGHSCORE",
+            self.title_font,
+            self.time,
+            y=90
         )
-        screen.blit(coins, (100, 350))
+
+        # =========================
+        # PANEL
+        # =========================
+        panel_x = w // 2 - 250
+        panel_y = 180
+        panel_w = 500
+        panel_h = 300
+
+        pygame.draw.rect(screen, (28, 28, 35), (panel_x, panel_y, panel_w, panel_h), border_radius=12)
+        pygame.draw.rect(screen, (60, 60, 80), (panel_x, panel_y, panel_w, panel_h), 2, border_radius=12)
+
+        leaderboard = self.game.data.get("leaderboard", [])
+
+        if not leaderboard:
+            text = self.small_font.render("No scores yet", True, (140, 140, 140))
+            screen.blit(text, (panel_x + 20, panel_y + 60))
+        else:
+            for i, entry in enumerate(leaderboard):
+                name = entry.get("name", "YOU")
+                score = entry.get("score", 0)
+
+                text = f"{i+1}. {name} - {score}"
+                render = self.font.render(text, True, (220, 220, 220))
+
+                screen.blit(render, (panel_x + 40, panel_y + 40 + i * 45))
+
+        # =========================
+        # BACK BUTTON
+        # =========================
+        pygame.draw.rect(
+            screen,
+            (40, 40, 50),
+            (panel_x + 150, panel_y + panel_h - 60, 200, 40),
+            border_radius=8
+        )
+
+        text = self.font.render("BACK", True, (0, 255, 200))
+        text_rect = text.get_rect(center=(panel_x + panel_w // 2, panel_y + panel_h - 40))
+        screen.blit(text, text_rect)
