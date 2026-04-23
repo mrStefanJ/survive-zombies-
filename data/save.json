@@ -1,5 +1,5 @@
 {
-    "coins": 17,
+    "coins": 26,
     "owned_skins": [
         "Red Skin",
         "Green Skin",
@@ -13,15 +13,15 @@
         },
         {
             "name": "YOU",
+            "score": 9
+        },
+        {
+            "name": "YOU",
             "score": 6
         },
         {
             "name": "YOU",
             "score": 5
-        },
-        {
-            "name": "YOU",
-            "score": 4
         },
         {
             "name": "YOU",
