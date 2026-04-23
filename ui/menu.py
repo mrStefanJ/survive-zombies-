@@ -1,5 +1,6 @@
 import pygame
 import math
+import sys
 from core.game_state import GameState
 
 
@@ -66,7 +67,7 @@ class Menu:
 
         elif option == "Exit":
             pygame.quit()
-            exit()
+            sys.exit(0)
 
     def draw(self, screen):
         screen.fill((18, 18, 22))
@@ -127,7 +128,7 @@ class Menu:
             pygame.draw.rect(
                 screen,
                 bg_color,
-                (panel_x + 20, y - 15, panel_w - 40, 40),
+                (panel_x + 20, y - 10, panel_w - 40, 45),
                 border_radius=8
             )
 

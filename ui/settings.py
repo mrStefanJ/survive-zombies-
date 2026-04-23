@@ -6,19 +6,20 @@ from core.game_state import GameState
 from data.save_system import save_data
 from ui.helper import UIHelper
 
+
 class Settings:
     def __init__(self, game):
         self.game = game
+
         self.title_font = pygame.font.SysFont("Arial", 60, bold=True)
         self.font = pygame.font.SysFont("Arial", 40)
         self.small_font = pygame.font.SysFont("Arial", 25)
 
-        self.options = ["Toggle Sound", "Select Skin", "Back"]
+        self.options = ["Toggle Music", "Select Skin", "Back"]
         self.selected = 0
         self.key_pressed = False
 
         self.skin_index = 0
-
         self.time = 0
 
         self.refresh_skins()
@@ -30,9 +31,9 @@ class Settings:
         pass
 
     def update(self):
-        current_owned = self.game.data.get("owned_skins", ["Green Skin"])
         self.time += 0.05
 
+        current_owned = self.game.data.get("owned_skins", ["Green Skin"])
         if current_owned != self.skins:
             self.refresh_skins()
 
@@ -47,15 +48,13 @@ class Settings:
             self.key_pressed = True
 
         elif keys[pygame.K_LEFT] and not self.key_pressed:
-            if self.selected == 1:  # skin row
-                if self.skins:
-                    self.skin_index = (self.skin_index - 1) % len(self.skins)
+            if self.selected == 1 and self.skins:
+                self.skin_index = (self.skin_index - 1) % len(self.skins)
             self.key_pressed = True
 
         elif keys[pygame.K_RIGHT] and not self.key_pressed:
-            if self.selected == 1:
-                if self.skins:
-                    self.skin_index = (self.skin_index + 1) % len(self.skins)
+            if self.selected == 1 and self.skins:
+                self.skin_index = (self.skin_index + 1) % len(self.skins)
             self.key_pressed = True
 
         elif keys[pygame.K_RETURN] and not self.key_pressed:
@@ -65,6 +64,9 @@ class Settings:
         if not any(keys):
             self.key_pressed = False
 
+    # =========================
+    # SKINS
+    # =========================
     def refresh_skins(self):
         self.skins = self.game.data.get("owned_skins", ["Green Skin"])
         self.selected_skin = self.game.data.get("selected_skin", "Green Skin")
@@ -75,12 +77,20 @@ class Settings:
 
         self.skin_index = self.skins.index(self.selected_skin)
 
+    # =========================
+    # ACTIONS
+    # =========================
     def select_option(self):
         option = self.options[self.selected]
 
-        if option == "Toggle Sound":
-            new_state = not self.game.data.get("sound", True)
-            self.game.data["sound"] = new_state
+        # -------------------------
+        # TOGGLE MUSIC (FIXED)
+        # -------------------------
+        if option == "Toggle Music":
+            current = self.game.data.get("music", True)
+            new_state = not current
+
+            self.game.data["music"] = new_state
 
             if new_state:
                 pygame.mixer.music.set_volume(0.5)
@@ -88,30 +98,32 @@ class Settings:
             else:
                 pygame.mixer.music.stop()
 
+        # -------------------------
+        # SELECT SKIN
+        # -------------------------
         elif option == "Select Skin":
             if self.skins:
                 chosen = self.skins[self.skin_index]
-
                 self.game.data["selected_skin"] = chosen
-
-                # sync local state
                 self.selected_skin = chosen
                 self.refresh_skins()
 
+        # -------------------------
+        # BACK
+        # -------------------------
         elif option == "Back":
             self.game.state = GameState.MENU
 
-        # ALWAYS SAVE AFTER CHANGE
         save_data(self.game.data)
 
+    # =========================
+    # DRAW
+    # =========================
     def draw(self, screen):
         screen.fill((18, 18, 22))
-
         w, h = screen.get_size()
 
-        # =========================
         # TITLE
-        # =========================
         UIHelper.draw_title(
             screen,
             "SETTINGS",
@@ -120,61 +132,51 @@ class Settings:
             y=90
         )
 
-        # =========================
-        # LEFT PANEL (OPTIONS)
-        # =========================
-        panel_x = 80
-        panel_y = 140
-        panel_w = 320
-        panel_h = 250
+        # LEFT PANEL
+        panel_x, panel_y = 80, 140
+        panel_w, panel_h = 320, 250
 
         pygame.draw.rect(screen, (28, 28, 35), (panel_x, panel_y, panel_w, panel_h), border_radius=12)
         pygame.draw.rect(screen, (60, 60, 80), (panel_x, panel_y, panel_w, panel_h), 2, border_radius=12)
 
         for i, option in enumerate(self.options):
             y = panel_y + 30 + i * 70
-
             is_selected = (i == self.selected)
 
-            bg_color = (40, 40, 50) if is_selected else (28, 28, 35)
-            text_color = (0, 255, 200) if is_selected else (220, 220, 220)
+            bg = (40, 40, 50) if is_selected else (28, 28, 35)
+            color = (0, 255, 200) if is_selected else (220, 220, 220)
 
             pygame.draw.rect(
                 screen,
-                bg_color,
+                bg,
                 (panel_x + 15, y - 20, panel_w - 30, 50),
                 border_radius=8
             )
 
-            text = self.font.render(option, True, text_color)
+            text = self.font.render(option, True, color)
             screen.blit(text, (panel_x + 30, y - 15))
 
-        # =========================
-        # RIGHT PANEL (DYNAMIC)
-        # =========================
-        panel_x = 450
-        panel_y = 140
-        panel_w = 360
-        panel_h = 320
+        # RIGHT PANEL
+        panel_x, panel_y = 450, 140
+        panel_w, panel_h = 360, 320
 
         pygame.draw.rect(screen, (28, 28, 35), (panel_x, panel_y, panel_w, panel_h), border_radius=12)
         pygame.draw.rect(screen, (60, 60, 80), (panel_x, panel_y, panel_w, panel_h), 2, border_radius=12)
 
         selected_option = self.options[self.selected]
 
-        # =========================
-        # TOGGLE SOUND PANEL
-        # =========================
-        if selected_option == "Toggle Sound":
-            header = self.small_font.render("SOUND SETTINGS", True, (255, 220, 0))
+        # -------------------------
+        # MUSIC UI
+        # -------------------------
+        if selected_option == "Toggle Music":
+            header = self.small_font.render("MUSIC SETTINGS", True, (255, 220, 0))
             screen.blit(header, (panel_x + 20, panel_y + 15))
 
-            is_on = self.game.data.get("sound", True)
+            is_on = self.game.data.get("music", True)
 
-            status_text = "ON" if is_on else "OFF"
-            status_color = (0, 255, 120) if is_on else (255, 80, 80)
+            status = "ON" if is_on else "OFF"
+            color = (0, 255, 120) if is_on else (255, 80, 80)
 
-            # big toggle box
             pygame.draw.rect(
                 screen,
                 (45, 45, 60),
@@ -182,18 +184,15 @@ class Settings:
                 border_radius=12
             )
 
-            status_render = self.font.render(status_text, True, status_color)
-            status_rect = status_render.get_rect(center=(panel_x + panel_w // 2, panel_y + 150))
-            screen.blit(status_render, status_rect)
+            text = self.font.render(status, True, color)
+            screen.blit(text, text.get_rect(center=(panel_x + panel_w // 2, panel_y + 150)))
 
             hint = self.small_font.render("Press ENTER to toggle", True, (140, 140, 140))
-            hint_rect = hint.get_rect(center=(panel_x + panel_w // 2, panel_y + 230))
-            screen.blit(hint, hint_rect)
+            screen.blit(hint, hint.get_rect(center=(panel_x + panel_w // 2, panel_y + 230)))
 
-
-        # =========================
-        # SKIN PANEL
-        # =========================
+        # -------------------------
+        # SKINS UI
+        # -------------------------
         elif selected_option == "Select Skin":
             header = self.small_font.render("OWNED SKINS", True, (255, 220, 0))
             screen.blit(header, (panel_x + 20, panel_y + 15))
@@ -205,43 +204,32 @@ class Settings:
                 for i, skin in enumerate(self.skins):
                     y = panel_y + 60 + i * 60
 
-                    is_selected = (i == self.skin_index and self.selected == 1)
-                    is_active = (skin == self.selected_skin)
+                    selected = (i == self.skin_index and self.selected == 1)
+                    active = (skin == self.selected_skin)
 
-                    card_color = (45, 45, 60)
-                    if is_selected:
-                        card_color = (70, 70, 95)
+                    color = (70, 70, 95) if selected else (45, 45, 60)
 
                     pygame.draw.rect(
                         screen,
-                        card_color,
+                        color,
                         (panel_x + 20, y - 15, panel_w - 40, 45),
                         border_radius=10
                     )
 
-                    # active indicator
-                    dot_color = (0, 255, 120) if is_active else (120, 120, 120)
-                    pygame.draw.circle(screen, dot_color, (panel_x + 35, y + 7), 6)
+                    dot = (0, 255, 120) if active else (120, 120, 120)
+                    pygame.draw.circle(screen, dot, (panel_x + 35, y + 7), 6)
 
-                    text_color = (255, 255, 255)
-                    if is_selected:
-                        text_color = (255, 220, 120)
-
-                    text = self.small_font.render(skin, True, text_color)
+                    txt_color = (255, 220, 120) if selected else (255, 255, 255)
+                    text = self.small_font.render(skin, True, txt_color)
                     screen.blit(text, (panel_x + 55, y))
 
-
-        # =========================
-        # BACK PANEL (optional)
-        # =========================
+        # -------------------------
+        # BACK UI
+        # -------------------------
         elif selected_option == "Back":
             text = self.small_font.render("Return to main menu", True, (140, 140, 140))
-            text_rect = text.get_rect(center=(panel_x + panel_w // 2, panel_y + panel_h // 2))
-            screen.blit(text, text_rect)
+            screen.blit(text, text.get_rect(center=(panel_x + panel_w // 2, panel_y + panel_h // 2)))
 
-        # =========================
         # HINT
-        # =========================
         hint = self.small_font.render("↑ ↓ navigate | ← → skins | ENTER select", True, (120, 120, 120))
-        hint_rect = hint.get_rect(center=(w // 2, h - 40))
-        screen.blit(hint, hint_rect)
+        screen.blit(hint, hint.get_rect(center=(w // 2, h - 40)))
