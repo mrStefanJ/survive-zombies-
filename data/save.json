@@ -1,0 +1,34 @@
+{
+    "coins": 17,
+    "owned_skins": [
+        "Red Skin",
+        "Green Skin",
+        "Blue Skin"
+    ],
+    "selected_skin": "Green Skin",
+    "leaderboard": [
+        {
+            "name": "YOU",
+            "score": 34
+        },
+        {
+            "name": "YOU",
+            "score": 6
+        },
+        {
+            "name": "YOU",
+            "score": 5
+        },
+        {
+            "name": "YOU",
+            "score": 4
+        },
+        {
+            "name": "YOU",
+            "score": 4
+        }
+    ],
+    "highscore": 34,
+    "sound": false,
+    "music": true
+}

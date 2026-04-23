@@ -1,10 +1,15 @@
 import json
+import os
 
-FILE = "data/save.json"
+SAVE_DIR = "data"
+FILE = os.path.join(SAVE_DIR, "save.json")
+
 
 def load_data():
+    os.makedirs(SAVE_DIR, exist_ok=True)
+
     try:
-        with open("save.json", "r") as f:
+        with open(FILE, "r") as f:
             data = json.load(f)
     except:
         data = {}
@@ -15,9 +20,17 @@ def load_data():
     data.setdefault("selected_skin", "Green Skin")
     data.setdefault("leaderboard", [])
     data.setdefault("highscore", 0)
+    data.setdefault("sound", True)
 
     return data
 
+
 def save_data(data):
-    with open(FILE, "w") as f:
+    os.makedirs(SAVE_DIR, exist_ok=True)
+
+    temp_file = FILE + ".tmp"
+
+    with open(temp_file, "w") as f:
         json.dump(data, f, indent=4)
+
+    os.replace(temp_file, FILE)  # atomic save

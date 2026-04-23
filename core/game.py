@@ -4,6 +4,8 @@
 import pygame
 import random
 from core.game_state import GameState
+from data.autosave_system import AutoSaveSystem
+from helper.utils import resource_path
 from systems.bomb_system import BombSystem
 from ui.menu import Menu
 from ui.game_over import GameOver
@@ -25,6 +27,8 @@ class Game:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Zombie Survivor")
         self.clock = pygame.time.Clock()
+        self.world_width = WIDTH
+        self.world_height = HEIGHT
 
         self.data = load_data()
 
@@ -64,16 +68,27 @@ class Game:
             pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
             pygame.mixer.set_num_channels(16)
 
-            self.explosion_sound = pygame.mixer.Sound("assets/sounds/explosion.wav")
+
+            self.explosion_sound = pygame.mixer.Sound(
+                resource_path("assets/sounds/explosion.wav")
+            )
             self.explosion_sound.set_volume(0.7)
 
-            pygame.mixer.music.load("assets/background/zombie-hot-dogs-2-back-from-the-bread.wav")
-            pygame.mixer.music.set_volume(0.5)
-            pygame.mixer.music.play(-1)
+            music_on = self.data.get("music", True)
+            pygame.mixer.music.load(
+                resource_path("assets/background/zombie-hot-dogs-2-back-from-the-bread.wav")
+            )
+            if music_on:
+                pygame.mixer.music.set_volume(0.5)
+                pygame.mixer.music.play(-1)
+            else:
+                pygame.mixer.music.stop()
 
         except Exception as e:
             print("Sound error:", e)
             self.explosion_sound = None
+
+        self.autosave = AutoSaveSystem(self, interval=10)
 
         # UI
         self.menu = Menu(self)
@@ -90,7 +105,7 @@ class Game:
     def reset(self):
         self.player = Player(self)
         self.zombies = ZombieManager()
-        self.spawner = SpawnSystem(self.zombies)
+        self.spawner = SpawnSystem(self, self.zombies)
 
         self.time_survived = 0
         self.score = 0
@@ -250,29 +265,7 @@ class Game:
         if not self.death_slow and self.zombies.check_collision(self.player):
             self.handle_game_over()
 
-    # =========================
-    # BOMBS
-    # =========================
-    def throw_bomb(self):
-        if self.current_bombs <= 0:
-            return  # nema bombi
-
-        pos = (self.player.rect.centerx, self.player.rect.centery)
-
-        self.bombs.append({
-            "pos": pos,
-            "timer": self.explosion_time
-        })
-
-        self.current_bombs -= 1
-
-    def update_bombs(self, dt):
-        for bomb in self.bombs[:]:
-            bomb["timer"] -= dt
-
-            if bomb["timer"] <= 0:
-                self.explode(bomb["pos"])
-                self.bombs.remove(bomb)
+        self.autosave.update(dt)
 
     # =========================
     # EXPLOSION
