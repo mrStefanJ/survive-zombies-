@@ -18,6 +18,10 @@ class Player:
         if keys[pygame.K_d]:
             self.rect.x += self.speed * dt
 
+        # ✅ koristi game dimenzije
+        self.rect.x = max(0, min(self.rect.x, self.game.world_width - self.rect.width))
+        self.rect.y = max(0, min(self.rect.y, self.game.world_height - self.rect.height))
+
     def draw(self, screen):
         skin = self.game.data.get("selected_skin", "Green Skin")
 
@@ -27,10 +31,5 @@ class Player:
             color = (255, 0, 0)
         elif skin == "Blue Skin":
             color = (0, 0, 255)
-        elif skin == "Green Skin":
-            color = (0, 255, 0)
 
         pygame.draw.rect(screen, color, self.rect)
-
-        self.rect.x = max(0, min(self.rect.x, 800 - self.rect.width))
-        self.rect.y = max(0, min(self.rect.y, 600 - self.rect.height))
